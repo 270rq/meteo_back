@@ -58,5 +58,9 @@ namespace meteo
         [DataType(DataType.Password)]
         public string Password { get; set; }
     }
-
+    public class cityWithRegion
+    {
+        public string City { get; set; }
+        public string Region { get; set; } 
+    }
 }

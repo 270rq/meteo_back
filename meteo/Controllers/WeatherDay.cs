@@ -96,25 +96,32 @@ namespace meteo.Controllers
             List<meteo.WeatherDay> weatherDays = new List<meteo.WeatherDay>();
             List<(DateTime, TimeSpan, TimeSpan)> valuesList = GetAllValuesFromSunTable(City, Region, Day);
             List<(DateTime, int, float, float, float, string, int)> valuesList1 = GetAllValuesFromMenuTable(City,Region, Day);
-            foreach (var values in valuesList1)
+            try
             {
-                    meteo.WeatherDay weatherDay = new meteo.WeatherDay
+                foreach (var values in valuesList1)
                 {
-                    Day = values.Item1,
-                    TemperatureC = values.Item2,
-                    Precipitation = values.Item3,
-                    UvIndex = values.Item4,
-                    SpeedWind = values.Item5,
-                    TypeWind = values.Item6,
-                    Visibility = values.Item7,
-                    Sunrise = valuesList[0].Item2,
-                    Sunset = valuesList[0].Item3,
-                    DewPoint = CalculateDewPoint(values.Item2,values.Item3),
-                    WeatherSensation = GetWeatherSensation(values.Item2,values.Item3,values.Item5),
+                    meteo.WeatherDay weatherDay = new meteo.WeatherDay
+                    {
+                        Day = values.Item1,
+                        TemperatureC = values.Item2,
+                        Precipitation = values.Item3,
+                        UvIndex = values.Item4,
+                        SpeedWind = values.Item5,
+                        TypeWind = values.Item6,
+                        Visibility = values.Item7,
+                        Sunrise = valuesList[0].Item2,
+                        Sunset = valuesList[0].Item3,
+                        DewPoint = CalculateDewPoint(values.Item2, values.Item3),
+                        WeatherSensation = GetWeatherSensation(values.Item2, values.Item3, values.Item5),
                     };
-                weatherDays.Add(weatherDay);
+                    weatherDays.Add(weatherDay);
+                }
+                return weatherDays;
             }
-            return weatherDays;
+            catch
+            {
+                return null;
+            }
         }
 
         public static int CalculateDewPoint(double temperature, double precipitation)

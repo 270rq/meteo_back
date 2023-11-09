@@ -102,5 +102,59 @@ namespace meteo.Controllers
                 return -1;
             }
         }
+        [HttpGet("allerg")]
+        public string GetAllerg(int id)
+        {
+            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                string query = "SELECT allergen FROM users WHERE id = @id";
+                using (MySqlCommand command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@id", id);
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            try
+                            {
+                                return reader.GetString(0);
+                            }
+                            catch 
+                            {
+                                return "not found";
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        [HttpPost("allerg")]
+        public void PostAllerg(string flower, int id)
+        {
+            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                string query = "UPDATE users SET allergen = @flower WHERE id = @id";
+                using (MySqlCommand command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@flower", flower);
+                    command.Parameters.AddWithValue("@id", id);
+                    try
+                    {
+                        command.ExecuteNonQuery();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Ошибка: " + ex.Message);
+                    }
+                }
+            }
+        }
+
     }
 }

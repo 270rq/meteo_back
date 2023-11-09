@@ -13,12 +13,13 @@ namespace meteo.Controllers
         public static List<(string, float, float)> GetAllValuesFromMapTable(string month, string Name_flower, float X, float Y)
         {
             List<string> monthArr = new List<string> { "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь" };
-            string nextMonth = monthArr[(monthArr.FindIndex(e => e == month)+ 1) % 12 + 1];
+            Console.WriteLine(month);
+            string nextMonth = monthArr[(monthArr.FindIndex(e => e == month)+ 1) % 12 ];
             string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
             MySqlConnection connection = new MySqlConnection(connectionString);
             connection.Open();
-            double latitude = X;
-            double longitude = Y;
+            string latitude = X.ToString().Replace(',','.');
+            string longitude = Y.ToString().Replace(',', '.'); ;
             string query = "SELECT * FROM map WHERE ST_Distance_Sphere(point(x, y), point(" + latitude + ", " + longitude + ")) <= 20000 and name_flower = '" + Name_flower +"' and (month = '"+month+"' or month = '"+nextMonth+"')";
             Console.WriteLine(query);
             MySqlCommand command = new MySqlCommand(query, connection);
@@ -129,5 +130,69 @@ namespace meteo.Controllers
             connection.Close();
             return values;
         }
+        [HttpGet("/allPlants")]
+        public List<string> GetAllPlants()
+        {
+            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
+            MySqlConnection connection = new MySqlConnection(connectionString);
+            connection.Open();
+            string query = "SELECT * FROM flower ;";
+            Console.WriteLine(query);
+            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlDataReader reader = null;
+            try
+            {
+                reader = command.ExecuteReader();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Ошибка: " + ex.Message);
+                return null;
+            }
+            List<string> values = new List<string>();
+
+            while (reader.Read())
+            {
+                var value = reader.GetString(0);
+
+                values.Add(value);
+            }
+            reader.Close();
+            connection.Close();
+            return values;
+        }
+        [HttpGet("/city")]
+        public List<cityWithRegion> getCityWithRegion()
+        {
+            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
+            MySqlConnection connection = new MySqlConnection(connectionString);
+            connection.Open();
+            string query = "SELECT * FROM cityWithRegion";
+            Console.WriteLine(query);
+            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlDataReader reader = null;
+            try
+            {
+                reader = command.ExecuteReader();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Ошибка: " + ex.Message);
+                return null;
+            }
+            List<cityWithRegion> values = new List<cityWithRegion>();
+
+            while (reader.Read())
+            {
+                var value =new cityWithRegion();
+                value.City = reader.GetString(1);
+                value.Region = reader.GetString(2);
+                values.Add(value);
+            }
+            reader.Close();
+            connection.Close();
+            return values;
+        }
+
     }
 }
