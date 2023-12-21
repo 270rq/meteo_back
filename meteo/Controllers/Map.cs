@@ -1,198 +1,218 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using System;
-using System.Drawing.Printing;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using System.Collections.Generic;
 
 namespace meteo.Controllers
 {
-    [ApiController] 
-    public class Map : ControllerBase
+    [ApiController]
+    public class MapController : ControllerBase
     {
-        public static List<(string, float, float)> GetAllValuesFromMapTable(string month, string Name_flower, float X, float Y)
-        {
-            List<string> monthArr = new List<string> { "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь" };
-            Console.WriteLine(month);
-            string nextMonth = monthArr[(monthArr.FindIndex(e => e == month)+ 1) % 12 ];
-            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
-            MySqlConnection connection = new MySqlConnection(connectionString);
-            connection.Open();
-            string latitude = X.ToString().Replace(',','.');
-            string longitude = Y.ToString().Replace(',', '.'); ;
-            string query = "SELECT * FROM map WHERE ST_Distance_Sphere(point(x, y), point(" + latitude + ", " + longitude + ")) <= 20000 and name_flower = '" + Name_flower +"' and (month = '"+month+"' or month = '"+nextMonth+"')";
-            Console.WriteLine(query);
-            MySqlCommand command = new MySqlCommand(query, connection);
-            MySqlDataReader reader = null;
-            try
-            {
-                reader = command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Ошибка: " + ex.Message);
-                return null;
-            }
-            List<(string, float, float)> values = new List<(string, float, float)>();
-
-            while (reader.Read())
-            {
-                var value = ( reader.GetString(1), reader.GetFloat(2), reader.GetFloat(3));
-
-                values.Add(value);
-            }
-            reader.Close();
-            connection.Close();
-            return values;
-
-        }
+        private string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
 
         [HttpGet("/Map")]
-        public List<meteo.Flower_map> Get(string month,string Name_flower, float X, float Y)
+        public List<FlowerMap> Get(DateTime day, string nameFlower)
         {
-            List<meteo.Flower_map> map = new List<meteo.Flower_map>();
-            List<(string Name_flower, float X, float Y)> valuesList1 = GetAllValuesFromMapTable(month,Name_flower, X, Y);
+            List<FlowerMap> map = new List<FlowerMap>();
+            List<(DateTime, float, float, string, string, string)> valuesList1 = GetAllValuesFromMapTable(day, nameFlower);
             if (valuesList1 == null)
             {
-                return null;   
+                return null;
             }
             foreach (var values in valuesList1)
             {
-                meteo.Flower_map flower_Map = new meteo.Flower_map()
+                FlowerMap flowerMap = new FlowerMap()
                 {
-                    NameFlower = values.Item1,
+                    day = values.Item1,
+                    NameFlower = values.Item4,
                     X = values.Item2,
-                    Y = values.Item3
+                    Y = values.Item3,
+                    Lvl = values.Item5,
+                    Family = values.Item6,
                 };
-                map.Add(flower_Map);
-                   
+                map.Add(flowerMap);
             }
             return map;
         }
+
         [HttpGet("/Family")]
-        public List<string> GetFam()
+        public List<string> GetFamilies()
         {
-            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
-            MySqlConnection connection = new MySqlConnection(connectionString);
-            connection.Open();
-            string query = "SELECT * FROM family";
-            Console.WriteLine(query);
-            MySqlCommand command = new MySqlCommand(query, connection);
-            MySqlDataReader reader = null;
-            try
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                reader = command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Ошибка: " + ex.Message);
-                return null;
-            }
-            List<string> values = new List<string>();
+                string query = "SELECT * FROM family";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                List<string> values = new List<string>();
 
-            while (reader.Read())
-            {
-                var value = reader.GetString(0);
+                try
+                {
+                    connection.Open();
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string value = reader.GetString(0);
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                    return null;
+                }
 
-                values.Add(value);
+                return values;
             }
-            reader.Close();
-            connection.Close();
-            return values;
         }
-        [HttpGet("/plants")]
-        public List <string> GetPlants(string Family) {
-            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
-            MySqlConnection connection = new MySqlConnection(connectionString);
-            connection.Open();
-            string query = "SELECT * FROM flower where family ='"+Family+"';";
-            Console.WriteLine(query);
-            MySqlCommand command = new MySqlCommand(query, connection);
-            MySqlDataReader reader = null;
-            try
-            {
-                reader = command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Ошибка: " + ex.Message);
-                return null;
-            }
-            List<string> values = new List<string>();
 
-            while (reader.Read())
+        [HttpGet("/Plants")]
+        public List<string> GetPlants(string family)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                var value = reader.GetString(0);
+                string query = "SELECT * FROM flower WHERE family = @family";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@family", family);
+                List<string> values = new List<string>();
 
-                values.Add(value);
+                try
+                {
+                    connection.Open();
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string value = reader.GetString(0);
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                    return null;
+                }
+
+                return values;
             }
-            reader.Close();
-            connection.Close();
-            return values;
         }
-        [HttpGet("/allPlants")]
+
+        [HttpGet("/AllPlants")]
         public List<string> GetAllPlants()
         {
-            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
-            MySqlConnection connection = new MySqlConnection(connectionString);
-            connection.Open();
-            string query = "SELECT * FROM flower ;";
-            Console.WriteLine(query);
-            MySqlCommand command = new MySqlCommand(query, connection);
-            MySqlDataReader reader = null;
-            try
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                reader = command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Ошибка: " + ex.Message);
-                return null;
-            }
-            List<string> values = new List<string>();
+                string query = "SELECT * FROM flower";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                List<string> values = new List<string>();
 
-            while (reader.Read())
-            {
-                var value = reader.GetString(0);
+                try
+                {
+                    connection.Open();
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string value = reader.GetString(0);
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                    return null;
+                }
 
-                values.Add(value);
+                return values;
             }
-            reader.Close();
-            connection.Close();
-            return values;
         }
-        [HttpGet("/city")]
-        public List<cityWithRegion> getCityWithRegion()
+
+        [HttpGet("/City")]
+        public List<CityWithRegion> GetCityWithRegion()
         {
-            string connectionString = "server=localhost;user id=root;password=1111;database=meteo";
-            MySqlConnection connection = new MySqlConnection(connectionString);
-            connection.Open();
-            string query = "SELECT * FROM cityWithRegion";
-            Console.WriteLine(query);
-            MySqlCommand command = new MySqlCommand(query, connection);
-            MySqlDataReader reader = null;
-            try
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                reader = command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Ошибка: " + ex.Message);
-                return null;
-            }
-            List<cityWithRegion> values = new List<cityWithRegion>();
+                string query = "SELECT * FROM cityWithRegion";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                List<CityWithRegion> values = new List<CityWithRegion>();
 
-            while (reader.Read())
-            {
-                var value =new cityWithRegion();
-                value.City = reader.GetString(1);
-                value.Region = reader.GetString(2);
-                values.Add(value);
+                try
+                {
+                    connection.Open();
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            CityWithRegion value = new CityWithRegion()
+                            {
+                                City = reader.GetString(1),
+                                Region = reader.GetString(2)
+                            };
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                    return null;
+                }
+
+                return values;
             }
-            reader.Close();
-            connection.Close();
-            return values;
         }
 
+        private List<(DateTime, float, float, string,string,string)> GetAllValuesFromMapTable(DateTime day, string nameFlower)
+        {
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                string query = "SELECT map.*, flower.family FROM map JOIN flower ON map.name_flower = flower.name WHERE map.name_flower = @nameFlower AND (map.day = @day OR map.day = @nextday)";
+                MySqlCommand command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@nameFlower", nameFlower);
+                command.Parameters.AddWithValue("@day", day);
+                command.Parameters.AddWithValue("@nextday",day.AddDays(1));
+                Console.WriteLine(query);
+                Console.WriteLine(day);
+                List<(DateTime, float, float, string,string,string)> values = new List<(DateTime, float, float, string, string, string)>();
+
+                try
+                {
+                    connection.Open();
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var value = (reader.GetDateTime(0), reader.GetFloat(2), reader.GetFloat(3), reader.GetString(1), reader.GetString(4),reader.GetString(5));
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error: " + ex.Message);
+                    return null;
+                }
+
+                return values;
+            }
+        }
+    }
+
+    public class FlowerMap
+    {
+        public DateTime day {  get; set; }
+        public string NameFlower { get; set; }
+        public float X { get; set; }
+        public float Y { get; set; }
+        public string Lvl { get; set; } 
+        public string Family { get; set; }
+    }
+
+    public class CityWithRegion
+    {
+        public string City { get; set; }
+        public string Region { get; set; }
     }
 }
